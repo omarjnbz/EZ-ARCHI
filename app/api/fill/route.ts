@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fillContract } from "@/lib/docx-fill";
+import { fillContract, detectDocFormat } from "@/lib/docx-fill";
 import { computeFinancials, type ContractFields } from "@/lib/schema";
 
 export const runtime = "nodejs";
@@ -23,6 +23,13 @@ export async function POST(req: NextRequest) {
     let templateBuffer: Buffer | undefined;
     if (templateFile instanceof File) {
       templateBuffer = Buffer.from(await templateFile.arrayBuffer());
+      const format = detectDocFormat(templateBuffer);
+      if (format === "legacy-doc") {
+        return NextResponse.json({ error: "legacy_doc_format" }, { status: 400 });
+      }
+      if (format === "unknown") {
+        return NextResponse.json({ error: "invalid_template" }, { status: 400 });
+      }
     }
 
     let docx: Buffer;

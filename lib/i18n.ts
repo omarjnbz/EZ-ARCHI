@@ -6,12 +6,22 @@ export const dict = {
     tagline: "Copilote IA · Architecte",
     legacy: "LEGACY ARCHITECTS · Omar Dadouche",
     downloadCta: "Télécharger le contrat",
-    uploadTemplateCta: "Modèle de contrat",
-    uploadTemplateHint:
-      "Utilisez le modèle .docx par défaut du cabinet, ou importez le vôtre. Un modèle personnalisé doit contenir des champs REF ou des Signets (Bookmarks) Word nommés exactement comme les champs du formulaire (ex: nom_prenom, cin, titre_foncier…) pour que les valeurs s'y insèrent automatiquement.",
-    templateActivePrefix: "Modèle actif :",
-    templateResetCta: "Modèle par défaut",
-    templateInvalid: "Ce fichier n'est pas un modèle .docx valide.",
+
+    // template manager
+    templateTitle: "Modèle de contrat",
+    templateHint:
+      "Choisissez le modèle utilisé pour générer le contrat. Un modèle personnalisé doit contenir des balises {{nom_du_champ}} (ex : {{nom_prenom}}, {{cin}}, {{titre_foncier}}) à l'endroit voulu dans le document Word.",
+    templateDefaultLabel: "Modèle par défaut",
+    templateDefaultSub: "LEGACY ARCHITECTS · Contrat type CNOA",
+    templateAddCta: "Importer un modèle .docx",
+    templateNamePrompt: "Nom de ce modèle",
+    templateInvalid: "Ce fichier n'est pas reconnu comme un document Word.",
+    templateLegacyDoc:
+      "Ce fichier est au format Word 97-2003 (.doc), non pris en charge. Ouvrez-le dans Word (ou Google Docs / LibreOffice, gratuits), puis Fichier → Enregistrer sous → Document Word (.docx), et réimportez cette version.",
+    templateFillError:
+      "Impossible de générer le contrat avec ce modèle. Vérifiez que le fichier .docx n'est pas corrompu.",
+    cancel: "Annuler",
+    save: "Enregistrer",
 
     // upload panel
     uploadTitle: "Documents du client",
@@ -108,12 +118,22 @@ export const dict = {
     tagline: "AI Copilot · Architect",
     legacy: "LEGACY ARCHITECTS · Omar Dadouche",
     downloadCta: "Download contract",
-    uploadTemplateCta: "Contract template",
-    uploadTemplateHint:
-      "Uses the firm's default .docx template, or import your own. A custom template must contain REF fields or Word Bookmarks named exactly like the form fields (e.g. nom_prenom, cin, titre_foncier…) for values to auto-fill.",
-    templateActivePrefix: "Active template:",
-    templateResetCta: "Default template",
-    templateInvalid: "This file isn't a valid .docx template.",
+
+    // template manager
+    templateTitle: "Contract template",
+    templateHint:
+      "Choose which template generates the contract. A custom template must contain {{field_name}} tags (e.g. {{nom_prenom}}, {{cin}}, {{titre_foncier}}) wherever a value should appear in the Word document.",
+    templateDefaultLabel: "Default template",
+    templateDefaultSub: "LEGACY ARCHITECTS · CNOA unified contract",
+    templateAddCta: "Import a .docx template",
+    templateNamePrompt: "Name this template",
+    templateInvalid: "This file isn't recognized as a Word document.",
+    templateLegacyDoc:
+      "This file is in the old Word 97-2003 format (.doc), which isn't supported. Open it in Word (or Google Docs / LibreOffice, both free), then File → Save As → Word Document (.docx), and re-import that version.",
+    templateFillError:
+      "Couldn't generate the contract with this template. Check that the .docx file isn't corrupted.",
+    cancel: "Cancel",
+    save: "Save",
 
     // upload panel
     uploadTitle: "Client documents",

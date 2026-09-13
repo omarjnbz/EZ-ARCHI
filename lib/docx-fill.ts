@@ -1,9 +1,48 @@
 import fs from "fs";
 import path from "path";
 import PizZip from "pizzip";
+import Docxtemplater from "docxtemplater";
 import type { ContractFields } from "./schema";
 
 const TEMPLATE_PATH = path.join(process.cwd(), "templates", "contract-template.docx");
+
+/**
+ * A handful of field names people naturally use when typing {{tags}} in Word
+ * differ slightly from this app's own schema keys. Map both directions so
+ * either spelling fills correctly regardless of which side is "authoritative".
+ */
+const FIELD_NAME_ALIASES: [string, string][] = [
+  ["nom_projet", "nom_du_projet"],
+  ["adresse_projet", "adresse_project"],
+  ["prix_m2", "prix_m"],
+];
+
+function withFieldAliases(fields: Partial<ContractFields>): Record<string, string> {
+  const out: Record<string, string> = { ...(fields as Record<string, string>) };
+  for (const [a, b] of FIELD_NAME_ALIASES) {
+    if (out[a] === undefined && out[b] !== undefined) out[a] = out[b];
+    if (out[b] === undefined && out[a] !== undefined) out[b] = out[a];
+  }
+  return out;
+}
+
+/**
+ * {{field_name}} mustache-style placeholders: the easiest convention for
+ * someone to add in Word themselves — just type the tag as plain text, no
+ * field codes or bookmarks needed. This is what a template prepared outside
+ * this app (e.g. by another architect) is most likely to use.
+ */
+function renderMustacheTags(zip: PizZip, fields: Partial<ContractFields>): PizZip {
+  const data = withFieldAliases(fields);
+  const doc = new Docxtemplater(zip, {
+    paragraphLoop: true,
+    linebreaks: true,
+    delimiters: { start: "{{", end: "}}" },
+    nullGetter: () => "",
+  });
+  doc.render(data);
+  return doc.getZip() as PizZip;
+}
 
 function escapeXml(s: string): string {
   return s
@@ -122,9 +161,38 @@ function replacePlainRefText(xml: string, fields: Partial<ContractFields>): stri
   });
 }
 
+/**
+ * Cheap format sniff from the file's magic bytes, so an upload can be
+ * rejected with a specific, actionable message before even attempting to
+ * unzip it as a .docx. A modern Word document (.docx, .docm) is a zip
+ * archive ("PK\x03\x04…"); the legacy binary format (.doc, Word 97-2003) is
+ * an OLE2 compound file ("\xD0\xCF\x11\xE0…") that this app cannot read.
+ */
+export function detectDocFormat(buf: Buffer): "docx" | "legacy-doc" | "unknown" {
+  if (buf.length >= 4 && buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04) {
+    return "docx";
+  }
+  if (
+    buf.length >= 8 &&
+    buf[0] === 0xd0 &&
+    buf[1] === 0xcf &&
+    buf[2] === 0x11 &&
+    buf[3] === 0xe0 &&
+    buf[4] === 0xa1 &&
+    buf[5] === 0xb1 &&
+    buf[6] === 0x1a &&
+    buf[7] === 0xe1
+  ) {
+    return "legacy-doc";
+  }
+  return "unknown";
+}
+
 export function fillContract(fields: Partial<ContractFields>, templateBuffer?: Buffer): Buffer {
   const buf = templateBuffer ?? fs.readFileSync(TEMPLATE_PATH);
-  const zip = new PizZip(buf);
+  let zip = new PizZip(buf);
+
+  zip = renderMustacheTags(zip, fields);
 
   const candidates = [
     "word/document.xml",

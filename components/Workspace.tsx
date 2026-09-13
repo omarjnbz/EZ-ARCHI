@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import UploadPanel from "./UploadPanel";
 import FieldsEditor from "./FieldsEditor";
 import CopilotChat from "./CopilotChat";
+import TemplateManager from "./TemplateManager";
 import { type Phase } from "./ProcessSteps";
 import { useLang } from "./LanguageProvider";
 import {
@@ -13,6 +14,8 @@ import {
   type ContractFields,
 } from "@/lib/schema";
 
+type ActiveTemplate = { blob: Blob; name: string } | null;
+
 export default function Workspace() {
   const { lang, setLang, t } = useLang();
   const [fields, setFields] = useState<ContractFields>(EMPTY_FIELDS);
@@ -20,7 +23,8 @@ export default function Workspace() {
   const [files, setFiles] = useState<File[]>([]);
   const [justFilled, setJustFilled] = useState<Set<string>>(new Set());
   const [extractedOnce, setExtractedOnce] = useState(false);
-  const [customTemplate, setCustomTemplate] = useState<File | null>(null);
+  const [customTemplate, setCustomTemplate] = useState<ActiveTemplate>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const editorScrollRef = useRef<HTMLDivElement>(null);
 
   const updateFields = useCallback((patch: Partial<ContractFields>) => {
@@ -82,14 +86,21 @@ export default function Workspace() {
 
   async function downloadContract() {
     setPhase("compose");
+    setDownloadError(null);
     const fd = new FormData();
     fd.append("fields", JSON.stringify(fields));
-    if (customTemplate) fd.append("template", customTemplate);
+    if (customTemplate) fd.append("template", customTemplate.blob, `${customTemplate.name}.docx`);
     const res = await fetch("/api/fill", { method: "POST", body: fd });
     if (!res.ok) {
       setPhase("idle");
       const data = await res.json().catch(() => null);
-      alert(data?.error === "invalid_template" ? t("templateInvalid") : t("error"));
+      const key =
+        data?.error === "legacy_doc_format"
+          ? "templateLegacyDoc"
+          : data?.error === "invalid_template"
+          ? "templateFillError"
+          : "error";
+      setDownloadError(t(key as any));
       return;
     }
     const blob = await res.blob();
@@ -111,18 +122,32 @@ export default function Workspace() {
         setLang={setLang}
         onDownload={downloadContract}
         ready={phase === "ready" || phase === "compose"}
-        templateName={customTemplate?.name ?? null}
-        onUploadTemplate={setCustomTemplate}
-        onResetTemplate={() => setCustomTemplate(null)}
       />
+      {downloadError && (
+        <div className="px-5 pt-3 -mb-1">
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[12.5px] text-amber-800 leading-relaxed fade-in">
+            <span>{downloadError}</span>
+            <button
+              onClick={() => setDownloadError(null)}
+              aria-label="dismiss"
+              className="shrink-0 opacity-60 hover:opacity-100"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex-1 grid grid-cols-[420px_1fr_440px] gap-5 p-5 overflow-hidden">
-        <aside className="overflow-y-auto pr-1">
+        <aside className="overflow-y-auto pr-1 space-y-8">
           <UploadPanel
             files={files}
             setFiles={setFiles}
             onExtract={extract}
             extracting={phase !== "idle" && phase !== "ready"}
             phase={phase}
+          />
+          <TemplateManager
+            onActiveChange={(blob, name) => setCustomTemplate(blob && name ? { blob, name } : null)}
           />
         </aside>
         <main
@@ -149,20 +174,13 @@ function Header({
   setLang,
   onDownload,
   ready,
-  templateName,
-  onUploadTemplate,
-  onResetTemplate,
 }: {
   lang: "fr" | "en";
   setLang: (l: "fr" | "en") => void;
   onDownload: () => void;
   ready: boolean;
-  templateName: string | null;
-  onUploadTemplate: (f: File) => void;
-  onResetTemplate: () => void;
 }) {
   const { t } = useLang();
-  const inputRef = useRef<HTMLInputElement>(null);
   return (
     <header className="flex items-center justify-between px-6 h-16 border-b border-line/60 bg-white/80 backdrop-blur-xl sticky top-0 z-10">
       <div className="flex items-center gap-3">
@@ -179,41 +197,6 @@ function Header({
       <div className="flex items-center gap-3">
         <LangToggle lang={lang} setLang={setLang} />
         <span className="text-xs text-subink hidden md:inline">{t("legacy")}</span>
-
-        {templateName && (
-          <span className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full bg-blue-50 text-accent border border-blue-100 max-w-[180px]">
-            <span className="truncate">
-              {t("templateActivePrefix")} {templateName}
-            </span>
-            <button
-              onClick={onResetTemplate}
-              aria-label="reset template"
-              className="shrink-0 opacity-70 hover:opacity-100"
-              title={t("templateResetCta")}
-            >
-              ✕
-            </button>
-          </span>
-        )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".docx"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onUploadTemplate(f);
-            e.target.value = "";
-          }}
-        />
-        <button
-          onClick={() => inputRef.current?.click()}
-          title={t("uploadTemplateHint")}
-          className="btn-ghost h-10 px-4 text-sm"
-        >
-          {t("uploadTemplateCta")}
-        </button>
-
         <button
           onClick={onDownload}
           disabled={!ready}
