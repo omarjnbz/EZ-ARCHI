@@ -64,21 +64,24 @@ function escapeXml(s: string): string {
  * segments, and replace the whole block with a single styled run carrying the
  * value from `fields`.
  */
-function replaceFields(xml: string, fields: Partial<ContractFields>): string {
-  // Tempered greedy: the run containing `begin` (and `end`) is bounded by
-  // its own </w:r>, so the regex cannot swallow earlier <w:r> nodes from
-  // elsewhere in the document.
-  const runBegin = String.raw`<w:r\b[^>]*>(?:(?!<\/w:r>)[\s\S])*?<w:fldChar\b[^>]*w:fldCharType="begin"[^>]*\/>(?:(?!<\/w:r>)[\s\S])*?<\/w:r>`;
-  const runEnd = String.raw`<w:r\b[^>]*>(?:(?!<\/w:r>)[\s\S])*?<w:fldChar\b[^>]*w:fldCharType="end"[^>]*\/>(?:(?!<\/w:r>)[\s\S])*?<\/w:r>`;
-  const fieldRe = new RegExp(`${runBegin}[\\s\\S]*?${runEnd}`, "g");
+// Tempered greedy: the run containing `begin` (and `end`) is bounded by its
+// own </w:r>, so the regex cannot swallow earlier <w:r> nodes elsewhere in
+// the document.
+const REF_FIELD_RUN_BEGIN = String.raw`<w:r\b[^>]*>(?:(?!<\/w:r>)[\s\S])*?<w:fldChar\b[^>]*w:fldCharType="begin"[^>]*\/>(?:(?!<\/w:r>)[\s\S])*?<\/w:r>`;
+const REF_FIELD_RUN_END = String.raw`<w:r\b[^>]*>(?:(?!<\/w:r>)[\s\S])*?<w:fldChar\b[^>]*w:fldCharType="end"[^>]*\/>(?:(?!<\/w:r>)[\s\S])*?<\/w:r>`;
+const REF_FIELD_BLOCK_RE = new RegExp(`${REF_FIELD_RUN_BEGIN}[\\s\\S]*?${REF_FIELD_RUN_END}`, "g");
 
-  return xml.replace(fieldRe, (full: string) => {
-    const instrs = [...full.matchAll(/<w:instrText[^>]*>([^<]*)<\/w:instrText>/g)]
-      .map((m) => m[1])
-      .join("");
-    const m = instrs.match(/REF\s+([a-zA-Z_]+)/);
-    if (!m) return full;
-    const key = m[1];
+function refFieldKey(block: string): string | null {
+  const instrs = [...block.matchAll(/<w:instrText[^>]*>([^<]*)<\/w:instrText>/g)]
+    .map((m) => m[1])
+    .join("");
+  return instrs.match(/REF\s+([a-zA-Z_]+)/)?.[1] ?? null;
+}
+
+function replaceFields(xml: string, fields: Partial<ContractFields>): string {
+  return xml.replace(REF_FIELD_BLOCK_RE, (full: string) => {
+    const key = refFieldKey(full);
+    if (!key) return full;
     const value = (fields as Record<string, string>)[key] ?? "";
     return `<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t xml:space="preserve">${escapeXml(value)}</w:t></w:r>`;
   });
@@ -188,23 +191,65 @@ export function detectDocFormat(buf: Buffer): "docx" | "legacy-doc" | "unknown" 
   return "unknown";
 }
 
+const TEMPLATE_PARTS = [
+  "word/document.xml",
+  "word/header1.xml",
+  "word/header2.xml",
+  "word/header3.xml",
+  "word/footer1.xml",
+  "word/footer2.xml",
+  "word/footer3.xml",
+];
+
+/**
+ * Scans a template (any of the four conventions this engine understands) and
+ * returns which schema field keys it actually has a slot for. A field the
+ * architect fills in that isn't in this set will never appear anywhere in
+ * the generated document for that template — surfaced in the UI so that's
+ * visible before download, not discovered after the fact.
+ */
+export function detectSupportedFields(templateBuffer?: Buffer): Set<string> {
+  const buf = templateBuffer ?? fs.readFileSync(TEMPLATE_PATH);
+  const zip = new PizZip(buf);
+  const found = new Set<string>();
+
+  const normalize = (key: string) => {
+    found.add(key);
+    for (const [a, b] of FIELD_NAME_ALIASES) {
+      if (key === a) found.add(b);
+      if (key === b) found.add(a);
+    }
+    if (BOOKMARK_ALIASES[key]) found.add(BOOKMARK_ALIASES[key]);
+  };
+
+  for (const fileName of TEMPLATE_PARTS) {
+    const file = zip.file(fileName);
+    if (!file) continue;
+    const xml = file.asText();
+
+    for (const m of xml.matchAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g)) normalize(m[1]);
+    for (const m of xml.matchAll(/<w:bookmarkStart w:id="\d+" w:name="([a-zA-Z_][a-zA-Z0-9_]*)"\/>/g)) normalize(m[1]);
+    for (const m of xml.matchAll(REF_FIELD_BLOCK_RE)) {
+      const key = refFieldKey(m[0]);
+      if (key) normalize(key);
+    }
+    for (const m of xml.matchAll(/<w:fldSimple\b[^>]*w:instr="([^"]*)"/g)) {
+      const km = m[1].match(/REF\s+([a-zA-Z_]+)/);
+      if (km) normalize(km[1]);
+    }
+    for (const m of xml.matchAll(/<w:t[^>]*>[^<]*REF\s+([a-zA-Z_]+)[^<]*<\/w:t>/g)) normalize(m[1]);
+  }
+
+  return found;
+}
+
 export function fillContract(fields: Partial<ContractFields>, templateBuffer?: Buffer): Buffer {
   const buf = templateBuffer ?? fs.readFileSync(TEMPLATE_PATH);
   let zip = new PizZip(buf);
 
   zip = renderMustacheTags(zip, fields);
 
-  const candidates = [
-    "word/document.xml",
-    "word/header1.xml",
-    "word/header2.xml",
-    "word/header3.xml",
-    "word/footer1.xml",
-    "word/footer2.xml",
-    "word/footer3.xml",
-  ];
-
-  for (const fileName of candidates) {
+  for (const fileName of TEMPLATE_PARTS) {
     const file = zip.file(fileName);
     if (!file) continue;
     let xml = file.asText();

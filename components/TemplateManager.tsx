@@ -51,6 +51,19 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
+async function fetchSupportedFields(blob: Blob | null): Promise<Set<string> | null> {
+  try {
+    const fd = new FormData();
+    if (blob) fd.append("template", blob, "template.docx");
+    const res = await fetch("/api/template-fields", { method: "POST", body: fd });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data.fields) ? new Set<string>(data.fields) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function sniffFormat(file: File): Promise<"docx" | "legacy-doc" | "unknown"> {
   const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
   if (head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04) return "docx";
@@ -70,7 +83,7 @@ async function sniffFormat(file: File): Promise<"docx" | "legacy-doc" | "unknown
 }
 
 type Props = {
-  onActiveChange: (blob: Blob | null, name: string | null) => void;
+  onActiveChange: (blob: Blob | null, name: string | null, supportedFields: Set<string> | null) => void;
 };
 
 export default function TemplateManager({ onActiveChange }: Props) {
@@ -102,7 +115,11 @@ export default function TemplateManager({ onActiveChange }: Props) {
     const match = lastActive ? list.find((tpl) => tpl.id === lastActive) : undefined;
     if (match) {
       setActiveId(match.id);
-      onActiveChange(dataUrlToBlob(match.dataUrl), match.name);
+      const blob = dataUrlToBlob(match.dataUrl);
+      onActiveChange(blob, match.name, null);
+      fetchSupportedFields(blob).then((f) => onActiveChange(blob, match.name, f));
+    } else {
+      fetchSupportedFields(null).then((f) => onActiveChange(null, null, f));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -113,7 +130,8 @@ export default function TemplateManager({ onActiveChange }: Props) {
     try {
       localStorage.setItem(ACTIVE_KEY, "default");
     } catch {}
-    onActiveChange(null, null);
+    onActiveChange(null, null, null);
+    fetchSupportedFields(null).then((f) => onActiveChange(null, null, f));
   }
 
   async function selectNajib() {
@@ -126,7 +144,8 @@ export default function TemplateManager({ onActiveChange }: Props) {
       const res = await fetch(NAJIB_TEMPLATE_URL);
       if (!res.ok) throw new Error("fetch failed");
       const blob = await res.blob();
-      onActiveChange(blob, NAJIB_TEMPLATE_NAME);
+      onActiveChange(blob, NAJIB_TEMPLATE_NAME, null);
+      fetchSupportedFields(blob).then((f) => onActiveChange(blob, NAJIB_TEMPLATE_NAME, f));
     } catch {
       setError(t("templateFillError"));
     }
@@ -138,7 +157,9 @@ export default function TemplateManager({ onActiveChange }: Props) {
     try {
       localStorage.setItem(ACTIVE_KEY, tpl.id);
     } catch {}
-    onActiveChange(dataUrlToBlob(tpl.dataUrl), tpl.name);
+    const blob = dataUrlToBlob(tpl.dataUrl);
+    onActiveChange(blob, tpl.name, null);
+    fetchSupportedFields(blob).then((f) => onActiveChange(blob, tpl.name, f));
   }
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {

@@ -25,6 +25,7 @@ export default function Workspace() {
   const [justFilled, setJustFilled] = useState<Set<string>>(new Set());
   const [extractedOnce, setExtractedOnce] = useState(false);
   const [customTemplate, setCustomTemplate] = useState<ActiveTemplate>(null);
+  const [supportedFields, setSupportedFields] = useState<Set<string> | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const editorScrollRef = useRef<HTMLDivElement>(null);
 
@@ -141,7 +142,10 @@ export default function Workspace() {
       <div className="flex-1 grid grid-cols-[272px_1fr] gap-4 p-4 overflow-hidden">
         <aside className="overflow-y-auto pr-1 space-y-6">
           <TemplateManager
-            onActiveChange={(blob, name) => setCustomTemplate(blob && name ? { blob, name } : null)}
+            onActiveChange={(blob, name, supported) => {
+              setCustomTemplate(blob && name ? { blob, name } : null);
+              setSupportedFields(supported);
+            }}
           />
           <UploadPanel
             files={files}
@@ -160,6 +164,7 @@ export default function Workspace() {
             onChange={updateFields}
             justFilled={justFilled}
             extractedOnce={extractedOnce}
+            supportedFields={supportedFields}
           />
         </main>
       </div>

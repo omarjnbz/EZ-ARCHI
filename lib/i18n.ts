@@ -105,7 +105,10 @@ export const dict = {
     // field status
     summaryFilled: "remplis",
     summaryToFill: "à compléter",
+    summarySupported: "pris en charge par ce modèle",
     badgeMissing: "À compléter",
+    fieldUnusedBadge: "Non utilisé",
+    fieldUnusedHint: "Ce champ n'apparaît pas dans le modèle actif — le remplir n'aura aucun effet sur le contrat téléchargé.",
     badgeFrom: "depuis",
     sourceCin: "CIN",
     sourceTf: "Titre foncier",
@@ -220,7 +223,10 @@ export const dict = {
     // field status
     summaryFilled: "filled",
     summaryToFill: "to fill",
+    summarySupported: "supported by this template",
     badgeMissing: "To fill",
+    fieldUnusedBadge: "Not used",
+    fieldUnusedHint: "This field doesn't appear in the active template — filling it in has no effect on the downloaded contract.",
     badgeFrom: "from",
     sourceCin: "ID card",
     sourceTf: "Land title",

@@ -13,6 +13,7 @@ type Props = {
   onChange: (patch: Partial<ContractFields>) => void;
   justFilled: Set<string>;
   extractedOnce: boolean;
+  supportedFields: Set<string> | null;
 };
 
 const GROUP_KEY = {
@@ -22,12 +23,15 @@ const GROUP_KEY = {
   Honoraires: "groupFees",
 } as const;
 
-export default function FieldsEditor({ fields, onChange, justFilled, extractedOnce }: Props) {
+export default function FieldsEditor({ fields, onChange, justFilled, extractedOnce, supportedFields }: Props) {
   const { t } = useLang();
   const totalCount = Object.keys(fields).length;
   const filledCount = Object.values(fields).filter((v) => v && v.length).length;
   const missingCount = totalCount - filledCount;
   const completion = (filledCount / totalCount) * 100;
+  const supportedCount = supportedFields
+    ? Object.keys(fields).filter((k) => supportedFields.has(k)).length
+    : null;
 
   return (
     <div className="max-w-4xl mx-auto px-10 py-10 space-y-10">
@@ -53,6 +57,12 @@ export default function FieldsEditor({ fields, onChange, justFilled, extractedOn
             {missingCount > 0 ? `, ${missingCount} ${t("summaryToFill")}` : ""}
           </span>
         </div>
+        {supportedCount !== null && supportedCount < totalCount && (
+          <div className="inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-full border border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning-fg)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning-fg)] shrink-0" />
+            {supportedCount}/{totalCount} {t("summarySupported")}
+          </div>
+        )}
       </div>
 
       {FIELD_GROUPS.map((group) => {
@@ -69,6 +79,7 @@ export default function FieldsEditor({ fields, onChange, justFilled, extractedOn
                   onChange={(v) => onChange({ [k]: v })}
                   highlight={justFilled.has(k)}
                   showMissing={extractedOnce && !(fields[k] && fields[k]!.length)}
+                  supported={supportedFields === null ? null : supportedFields.has(k)}
                 />
               ))}
             </div>
@@ -89,12 +100,14 @@ function FieldRow({
   onChange,
   highlight,
   showMissing,
+  supported,
 }: {
   fieldKey: keyof ContractFields;
   value: string;
   onChange: (v: string) => void;
   highlight: boolean;
   showMissing: boolean;
+  supported: boolean | null;
 }) {
   const { t, lang } = useLang();
   const isLong =
@@ -103,14 +116,25 @@ function FieldRow({
     fieldKey === "honoraires_TTC_lettres";
   const labelKey = `label_${fieldKey}` as const;
   const sources = FIELD_SOURCES[fieldKey];
+  const unsupported = supported === false;
 
   return (
     <div className={isLong ? "col-span-2" : ""}>
-      <div className="flex items-center justify-between mb-1.5">
-        <label className="text-[11px] uppercase tracking-[0.1em] text-subink font-medium">
-          {t(labelKey as any)}
-        </label>
-        <div className="flex items-center gap-1">
+      <div className="flex items-center justify-between mb-1.5 gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <label className="text-[11px] uppercase tracking-[0.1em] text-subink font-medium truncate">
+            {t(labelKey as any)}
+          </label>
+          {unsupported && (
+            <span
+              title={t("fieldUnusedHint")}
+              className="shrink-0 inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-full border border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning-fg)]"
+            >
+              {t("fieldUnusedBadge")}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
           {value ? (
             sources.map((s) => <SourceChip key={s} source={s} />)
           ) : showMissing ? (
@@ -123,12 +147,13 @@ function FieldRow({
           )}
         </div>
       </div>
-      <div className={highlight ? "glow-fill rounded-lg" : ""}>
+      <div className={[highlight ? "glow-fill rounded-lg" : "", unsupported ? "opacity-50" : ""].join(" ")}>
         {isLong ? (
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
             rows={2}
+            title={unsupported ? t("fieldUnusedHint") : undefined}
             className={[
               "w-full bg-canvas border rounded-lg px-3.5 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none transition-all duration-200",
               highlight ? "border-success" : value ? "border-line" : showMissing ? "border-[var(--warning-border)]" : "border-line",
@@ -139,6 +164,7 @@ function FieldRow({
           <input
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            title={unsupported ? t("fieldUnusedHint") : undefined}
             className={[
               "w-full bg-canvas border rounded-lg px-3.5 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all duration-200",
               highlight ? "border-success" : value ? "border-line" : showMissing ? "border-[var(--warning-border)]" : "border-line",
