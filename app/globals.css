@@ -9,9 +9,9 @@
   --subink-rgb: 115 115 115;
   --line-rgb: 234 234 234;
   --soft-rgb: 250 250 250;
-  --accent-rgb: 23 23 23;
+  --accent-rgb: 0 113 227;
   --accent-fg-rgb: 255 255 255;
-  --accent-hover-rgb: 0 0 0;
+  --accent-hover-rgb: 0 102 207;
   --success-rgb: 18 128 92;
   --warning-bg: #fef6e7;
   --warning-border: #f5dfa8;
@@ -25,9 +25,9 @@
   --subink-rgb: 143 143 143;
   --line-rgb: 38 38 38;
   --soft-rgb: 23 23 23;
-  --accent-rgb: 237 237 237;
-  --accent-fg-rgb: 10 10 10;
-  --accent-hover-rgb: 255 255 255;
+  --accent-rgb: 26 140 255;
+  --accent-fg-rgb: 255 255 255;
+  --accent-hover-rgb: 61 158 255;
   --success-rgb: 61 220 151;
   --warning-bg: #241d0d;
   --warning-border: #4a3b12;

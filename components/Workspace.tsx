@@ -140,15 +140,15 @@ export default function Workspace() {
       )}
       <div className="flex-1 grid grid-cols-[272px_1fr] gap-4 p-4 overflow-hidden">
         <aside className="overflow-y-auto pr-1 space-y-6">
+          <TemplateManager
+            onActiveChange={(blob, name) => setCustomTemplate(blob && name ? { blob, name } : null)}
+          />
           <UploadPanel
             files={files}
             setFiles={setFiles}
             onExtract={extract}
             extracting={phase !== "idle" && phase !== "ready"}
             phase={phase}
-          />
-          <TemplateManager
-            onActiveChange={(blob, name) => setCustomTemplate(blob && name ? { blob, name } : null)}
           />
         </aside>
         <main
@@ -183,7 +183,7 @@ function Header({
   return (
     <header className="flex items-center justify-between px-6 h-16 border-b border-line bg-canvas/85 backdrop-blur-xl sticky top-0 z-10">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-md bg-ink flex items-center justify-center text-canvas display text-[13px]">
+        <div className="w-8 h-8 rounded-md bg-accent flex items-center justify-center text-accentFg display text-[13px]">
           EA
         </div>
         <div className="flex flex-col">

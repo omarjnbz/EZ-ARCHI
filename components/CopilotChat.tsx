@@ -73,7 +73,7 @@ export default function CopilotChat({ fields, applyPatch }: Props) {
     <div className="flex flex-col h-full card !rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-line/60 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md bg-ink flex items-center justify-center text-canvas text-xs font-semibold">
+          <div className="w-8 h-8 rounded-md bg-accent flex items-center justify-center text-accentFg text-xs font-semibold">
             AI
           </div>
           <div>

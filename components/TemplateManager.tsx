@@ -10,6 +10,8 @@ const ACTIVE_KEY = "ez-archi-active-template-v1";
 const NAJIB_ID = "najib";
 const NAJIB_TEMPLATE_URL = "/templates/najib-dadouche.docx";
 const NAJIB_TEMPLATE_NAME = "Najib Dadouche";
+const OMAR_PREVIEW = "/previews/omar-default.png";
+const NAJIB_PREVIEW = "/previews/najib-dadouche.png";
 
 function loadSaved(): SavedTemplate[] {
   try {
@@ -78,7 +80,16 @@ export default function TemplateManager({ onActiveChange }: Props) {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingName, setPendingName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ src: string; top: number; left: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function showPreview(e: React.MouseEvent, src: string) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setPreview({ src, top: rect.top, left: rect.right + 10 });
+  }
+  function hidePreview() {
+    setPreview(null);
+  }
 
   useEffect(() => {
     const list = loadSaved();
@@ -191,6 +202,8 @@ export default function TemplateManager({ onActiveChange }: Props) {
           label={t("templateDefaultLabel")}
           sublabel={t("templateDefaultSub")}
           onSelect={selectDefault}
+          onPreviewIn={(e) => showPreview(e, OMAR_PREVIEW)}
+          onPreviewOut={hidePreview}
         />
         <ProfileRow
           active={activeId === NAJIB_ID}
@@ -198,6 +211,8 @@ export default function TemplateManager({ onActiveChange }: Props) {
           label={NAJIB_TEMPLATE_NAME}
           sublabel={t("templateNajibSub")}
           onSelect={selectNajib}
+          onPreviewIn={(e) => showPreview(e, NAJIB_PREVIEW)}
+          onPreviewOut={hidePreview}
         />
       </div>
 
@@ -261,6 +276,18 @@ export default function TemplateManager({ onActiveChange }: Props) {
           </button>
         </>
       )}
+
+      {preview && (
+        <div
+          className="fixed z-40 w-56 rounded-lg border border-line bg-surface shadow-lift overflow-hidden pop-in pointer-events-none"
+          style={{ top: preview.top, left: preview.left }}
+        >
+          <img src={preview.src} alt="" className="w-full h-auto block" />
+          <div className="px-2.5 py-1.5 text-[10px] text-subink border-t border-line">
+            {t("templatePreviewHint")}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -272,6 +299,8 @@ function ProfileRow({
   sublabel,
   onSelect,
   onRemove,
+  onPreviewIn,
+  onPreviewOut,
 }: {
   active: boolean;
   initials: string;
@@ -279,10 +308,14 @@ function ProfileRow({
   sublabel: string;
   onSelect: () => void;
   onRemove?: () => void;
+  onPreviewIn?: (e: React.MouseEvent) => void;
+  onPreviewOut?: () => void;
 }) {
   return (
     <div
       onClick={onSelect}
+      onMouseEnter={onPreviewIn}
+      onMouseLeave={onPreviewOut}
       className={[
         "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors",
         active ? "bg-soft" : "hover:bg-soft/60",
@@ -291,7 +324,7 @@ function ProfileRow({
       <div
         className={[
           "w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 transition-colors",
-          active ? "bg-ink text-canvas" : "bg-soft border border-line text-subink",
+          active ? "bg-accent text-accentFg" : "bg-soft border border-line text-subink",
         ].join(" ")}
       >
         {initials}
@@ -301,7 +334,7 @@ function ProfileRow({
         <div className="text-[11px] text-subink leading-tight truncate">{sublabel}</div>
       </div>
       {active && (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-ink shrink-0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent shrink-0">
           <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
