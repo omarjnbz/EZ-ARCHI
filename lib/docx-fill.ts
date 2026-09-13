@@ -46,6 +46,68 @@ function replaceFields(xml: string, fields: Partial<ContractFields>): string {
 }
 
 /**
+ * Word also has a second, more compact way to encode a REF field:
+ *   <w:fldSimple w:instr=" REF key ">…cached display run(s)…</w:fldSimple>
+ * (as opposed to the begin/instrText/separate/end run sequence above). Word
+ * uses whichever form was in effect when the field was inserted/last edited,
+ * so a template can and does mix both for the same field name in different
+ * spots.
+ */
+function replaceSimpleFields(xml: string, fields: Partial<ContractFields>): string {
+  return xml.replace(
+    /<w:fldSimple\b[^>]*w:instr="([^"]*)"[^>]*>[\s\S]*?<\/w:fldSimple>/g,
+    (full, instr: string) => {
+      const m = instr.match(/REF\s+([a-zA-Z_]+)/);
+      if (!m) return full;
+      const value = (fields as Record<string, string>)[m[1]] ?? "";
+      return `<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t xml:space="preserve">${escapeXml(value)}</w:t></w:r>`;
+    }
+  );
+}
+
+/**
+ * Word Bookmarks (<w:bookmarkStart w:name="key"/>…<w:bookmarkEnd/>) are a second
+ * placeholder convention used in this template (and the simplest one for a
+ * template author to add in Word: Insert > Bookmark, name it like a field key).
+ * Every bookmarked span found is treated as a merge slot: known keys are filled,
+ * unknown/unmapped bookmark names are blanked rather than left as whatever
+ * static text they wrapped — this template ships with several bookmarks that
+ * still contain a previous real client's data (name, CIN, address, land title…)
+ * left over from the original sample fill, which must never leak into a new
+ * client's contract.
+ */
+const BOOKMARK_ALIASES: Record<string, string> = {
+  prix_m2: "prix_m",
+  adresse_projet: "adresse_project",
+  taux_honoraires_2: "taux_honoraires",
+  taux_honoraires_lettres_2: "taux_honoraires_lettres",
+  nom_du_projet_2: "nom_du_projet",
+};
+
+function replaceBookmarkFields(xml: string, fields: Partial<ContractFields>): string {
+  const startRe = /<w:bookmarkStart w:id="(\d+)" w:name="([a-zA-Z_][a-zA-Z0-9_]*)"\/>/g;
+  let result = "";
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = startRe.exec(xml))) {
+    const [full, id, name] = m;
+    const endTag = `<w:bookmarkEnd w:id="${id}"/>`;
+    const endIdx = xml.indexOf(endTag, m.index + full.length);
+    if (endIdx === -1) continue; // unmatched bookmark, leave as-is
+
+    const key = BOOKMARK_ALIASES[name] || name;
+    const value = (fields as Record<string, string>)[key] ?? "";
+
+    result += xml.slice(cursor, m.index + full.length);
+    result += `<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t xml:space="preserve">${escapeXml(value)}</w:t></w:r>`;
+    cursor = endIdx;
+  }
+  result += xml.slice(cursor);
+  return result;
+}
+
+/**
  * Also handle the rare case where "REF key" appears as plain text inside a
  * single <w:t> (no field code). This catches placeholders that may have been
  * pasted as text in some sections.
@@ -60,8 +122,8 @@ function replacePlainRefText(xml: string, fields: Partial<ContractFields>): stri
   });
 }
 
-export function fillContract(fields: Partial<ContractFields>): Buffer {
-  const buf = fs.readFileSync(TEMPLATE_PATH);
+export function fillContract(fields: Partial<ContractFields>, templateBuffer?: Buffer): Buffer {
+  const buf = templateBuffer ?? fs.readFileSync(TEMPLATE_PATH);
   const zip = new PizZip(buf);
 
   const candidates = [
@@ -78,7 +140,9 @@ export function fillContract(fields: Partial<ContractFields>): Buffer {
     const file = zip.file(fileName);
     if (!file) continue;
     let xml = file.asText();
+    xml = replaceBookmarkFields(xml, fields);
     xml = replaceFields(xml, fields);
+    xml = replaceSimpleFields(xml, fields);
     xml = replacePlainRefText(xml, fields);
     zip.file(fileName, xml);
   }

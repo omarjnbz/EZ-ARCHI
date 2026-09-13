@@ -4,27 +4,35 @@ import { callResponses, fileToDataUrl } from "@/lib/azure-openai";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const EXTRACTION_SYSTEM = `Tu es un assistant pour Omar Dadouche, architecte au Maroc (cabinet LEGACY ARCHITECTS).
-Tu reçois plusieurs documents administratifs marocains : CIN (recto/verso), certificat de propriété (شهادة الملكية), calcul de contenances, etc.
-Extrais les champs demandés et retourne UN OBJET JSON STRICT, sans texte explicatif, sans markdown.
+const EXTRACTION_SYSTEM = `Tu assistes Omar Dadouche, architecte au Maroc (LEGACY ARCHITECTS).
+Tu reçois plusieurs documents administratifs marocains :
+- CIN recto (carte d'identité nationale, côté avec photo et nom romanisé)
+- CIN verso (côté avec adresse, parents, sexe M/F, et code MRZ commençant par "IDMAR")
+- شهادة الملكية / Certificat de propriété (titre foncier ANCFCC, en arabe + français)
+- Calcul de contenances (cadastre, en français)
+
+Tu extrais TOUS les champs disponibles et tu retournes UN OBJET JSON STRICT, sans markdown, sans phrase d'introduction.
 
 Schéma exigé :
 {
   "civilite": "Mr" | "Mme",
-  "nom_prenom": "string (en majuscules, prénom NOM)",
-  "cin": "string",
-  "adresse": "string (adresse personnelle du maître d'ouvrage)",
+  "nom_prenom": "string (format CIN romanisé : NOM_DE_FAMILLE PRENOM, ex: EL ABBADI HMIDA)",
+  "cin": "string (ex: PZ819283)",
+  "adresse": "string (adresse personnelle complète du maître d'ouvrage)",
   "province": "string (ex: Khémisset)",
   "commune": "string (ex: Tiflet)",
-  "titre_foncier": "string (ex: 31846/16)",
-  "superficie_terrain": "string (ex: 533 m² ou 5a 33ca)"
+  "titre_foncier": "string (numéro complet, ex: 31846/16)",
+  "superficie_terrain": "string (PRÉFÉRER la forme métrique en m², ex: '533 m²' plutôt que '5a 33ca')"
 }
 
-Règles :
-- Si une info n'est pas trouvée, mets une chaîne vide "".
-- Pour nom_prenom : utiliser le format romanisé de la CIN.
-- Pour superficie_terrain : préfère la forme métrique en m² si elle est disponible, sinon la forme cadastrale.
-- Réponds UNIQUEMENT avec l'objet JSON.`;
+RÈGLES STRICTES :
+1. nom_prenom : convention marocaine = NOM DE FAMILLE en premier, puis PRÉNOM. Sur la CIN, lis exactement le nom en lettres latines au recto. Si tu vois "EL ABBADI" + "HMIDA", écris "EL ABBADI HMIDA". JAMAIS l'inverse.
+2. civilite : lis le champ "Sexe" au verso de la CIN. "M" => "Mr". "F" => "Mme". Ne devine PAS depuis le prénom.
+3. cin : copie EXACTEMENT le numéro tel qu'il apparaît au recto (ex: PZ819283). Ne l'invente pas. Si tu ne le vois pas clairement, mets "".
+4. superficie_terrain : convertis "X a Y ca" en m². "5 a 33 ca" = 533 m². Note le résultat en m².
+5. Si une info n'est pas disponible dans les documents fournis, mets la valeur "" (chaîne vide). Ne devine JAMAIS.
+6. Toutes les valeurs sont des chaînes de caractères (pas de null, pas de nombre).
+7. Réponds UNIQUEMENT avec l'objet JSON, rien d'autre.`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,13 +45,16 @@ export async function POST(req: NextRequest) {
     const content: any[] = [
       {
         type: "input_text",
-        text: "Voici les documents du client. Extrais les champs selon le schéma.",
+        text:
+          "Voici les documents du client (CIN recto/verso, certificat de propriété, calcul de contenances). " +
+          "Extrais tous les champs disponibles selon le schéma et réponds en JSON strict, sans texte autour.",
       },
     ];
 
     for (const f of files) {
       const buf = Buffer.from(await f.arrayBuffer());
-      const mime = f.type || (f.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg");
+      const mime =
+        f.type || (f.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg");
       if (mime.startsWith("image/")) {
         content.push({
           type: "input_image",
@@ -51,15 +62,14 @@ export async function POST(req: NextRequest) {
           detail: "high",
         });
       } else if (mime === "application/pdf") {
-        // Try sending as input_file first; if model doesn't support, fall back to text
         try {
           const pdfParse = (await import("pdf-parse")).default;
           const parsed = await pdfParse(buf);
           content.push({
             type: "input_text",
-            text: `\n--- Contenu extrait du PDF "${f.name}" ---\n${parsed.text}\n--- fin PDF ---\n`,
+            text: `\n--- Texte extrait du PDF "${f.name}" ---\n${parsed.text}\n--- fin PDF ---\n`,
           });
-        } catch (e) {
+        } catch {
           content.push({
             type: "input_file",
             filename: f.name,
@@ -78,7 +88,6 @@ export async function POST(req: NextRequest) {
     try {
       fields = JSON.parse(text);
     } catch {
-      // Try to find a JSON block in the response
       const m = text.match(/\{[\s\S]*\}/);
       if (m) {
         try { fields = JSON.parse(m[0]); } catch {}

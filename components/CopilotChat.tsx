@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useLang } from "./LanguageProvider";
 import type { ContractFields } from "@/lib/schema";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -11,25 +12,33 @@ type Props = {
 };
 
 export default function CopilotChat({ fields, applyPatch }: Props) {
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "assistant",
-      content:
-        "Bonjour Omar. Dépose les pièces du dossier, je remplis le contrat. Tu peux aussi me demander de calculer les honoraires, vérifier la cohérence, reformuler une adresse…",
-    },
-  ]);
+  const { lang, t } = useLang();
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Reset intro line when language switches so it always shows in the right tongue
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (messages[0]?.role === "assistant") {
+      setMessages((m) => [{ role: "assistant", content: t("copilotIntro") }, ...m.slice(1)]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 1e9, behavior: "smooth" });
   }, [messages, loading]);
 
-  async function send() {
-    if (!input.trim() || loading) return;
-    const userMsg: Msg = { role: "user", content: input.trim() };
-    const next = [...messages, userMsg];
+  async function send(textOverride?: string) {
+    const value = (textOverride ?? input).trim();
+    if (!value || loading) return;
+    const userMsg: Msg = { role: "user", content: value };
+    const isFirst = messages.length === 0;
+    const next = isFirst
+      ? [{ role: "assistant" as const, content: t("copilotIntro") }, userMsg]
+      : [...messages, userMsg];
     setMessages(next);
     setInput("");
     setLoading(true);
@@ -37,54 +46,101 @@ export default function CopilotChat({ fields, applyPatch }: Props) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, fields }),
+        body: JSON.stringify({ messages: next, fields, lang }),
       });
       const data = await res.json();
       if (data.error) {
-        setMessages([...next, { role: "assistant", content: "Erreur : " + data.error }]);
+        setMessages([...next, { role: "assistant", content: `${t("error")}: ${data.error}` }]);
       } else {
         setMessages([...next, { role: "assistant", content: data.reply }]);
-        if (data.patch && typeof data.patch === "object") {
-          applyPatch(data.patch);
-        }
+        if (data.patch && typeof data.patch === "object") applyPatch(data.patch);
       }
-    } catch (e: any) {
-      setMessages([...next, { role: "assistant", content: "Erreur réseau." }]);
+    } catch {
+      setMessages([...next, { role: "assistant", content: t("networkError") }]);
     } finally {
       setLoading(false);
     }
   }
 
+  const examples: ("copilotExample1" | "copilotExample2" | "copilotExample3" | "copilotExample4")[] = [
+    "copilotExample1",
+    "copilotExample2",
+    "copilotExample3",
+    "copilotExample4",
+  ];
+
   return (
-    <div className="flex flex-col h-full bg-paper">
-      <div className="px-5 py-4 border-b border-line">
-        <div className="serif text-lg">Copilote</div>
-        <div className="text-xs text-muted">Powered by GPT · Azure OpenAI</div>
+    <div className="flex flex-col h-full card !rounded-[28px] overflow-hidden">
+      <div className="px-5 py-4 border-b border-line/60 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-[#7B4BFF] flex items-center justify-center text-white text-xs font-semibold">
+            AI
+          </div>
+          <div>
+            <div className="display text-base leading-none">{t("copilotTitle")}</div>
+            <div className="text-[11px] text-subink leading-none mt-1">{t("copilotSubtitle")}</div>
+          </div>
+        </div>
+        {loading && (
+          <span className="text-accent">
+            <span className="dot" />
+            <span className="dot" />
+            <span className="dot" />
+          </span>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        {messages.length === 0 && (
+          <div className="space-y-5 fade-in">
+            <div className="rounded-2xl border border-line/70 bg-soft p-4">
+              <div className="text-[13px] font-semibold mb-1">{t("copilotHowTitle")}</div>
+              <p className="text-[12.5px] text-subink leading-relaxed">{t("copilotHowBody")}</p>
+            </div>
+
+            <div className="rounded-2xl bg-white border border-line/70 p-4">
+              <p className="text-[13px] leading-relaxed text-ink">{t("copilotIntro")}</p>
+            </div>
+
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.12em] text-subink font-medium mb-2">
+                {t("copilotExamplesTitle")}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {examples.map((ex) => (
+                  <button key={ex} onClick={() => send(t(ex))} className="chip">
+                    {t(ex)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {messages.map((m, i) => (
           <div
             key={i}
             className={
               m.role === "user"
-                ? "ml-auto max-w-[85%] bg-ink text-paper px-3 py-2 text-sm leading-relaxed fade-in"
-                : "mr-auto max-w-[90%] bg-white border border-line px-3 py-2 text-sm leading-relaxed fade-in"
+                ? "ml-auto max-w-[88%] bg-accent text-white px-3.5 py-2.5 text-[13.5px] leading-relaxed pop-in rounded-2xl rounded-tr-md"
+                : "mr-auto max-w-[92%] bg-soft text-ink px-3.5 py-2.5 text-[13.5px] leading-relaxed pop-in rounded-2xl rounded-tl-md"
             }
           >
             {m.content}
           </div>
         ))}
         {loading && (
-          <div className="mr-auto bg-white border border-line px-3 py-2 text-sm">
-            <span className="dot" />
-            <span className="dot" />
-            <span className="dot" />
+          <div className="mr-auto bg-soft px-3.5 py-2.5 rounded-2xl rounded-tl-md">
+            <span className="text-accent">
+              <span className="dot" />
+              <span className="dot" />
+              <span className="dot" />
+            </span>
           </div>
         )}
       </div>
 
-      <div className="border-t border-line p-3">
+      <div className="border-t border-line/60 p-3 bg-white/60 backdrop-blur">
         <div className="flex gap-2 items-end">
           <textarea
             value={input}
@@ -95,21 +151,20 @@ export default function CopilotChat({ fields, applyPatch }: Props) {
                 send();
               }
             }}
-            placeholder="Posez une question, demandez un calcul…"
+            placeholder={t("copilotPlaceholder")}
             rows={2}
-            className="flex-1 bg-white border border-line px-3 py-2 text-sm resize-none focus:outline-none focus:border-ink"
+            className="flex-1 bg-white border border-line rounded-2xl px-3.5 py-2.5 text-[13.5px] resize-none focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/15 transition-all"
           />
           <button
-            onClick={send}
+            onClick={() => send()}
             disabled={!input.trim() || loading}
-            className="h-9 px-4 bg-ink text-paper text-sm hover:bg-accent disabled:bg-line disabled:text-muted transition-colors"
+            className="btn-primary h-10 w-10 flex items-center justify-center"
+            aria-label="send"
           >
             ↑
           </button>
         </div>
-        <div className="text-[10px] text-muted mt-2 leading-snug">
-          Le copilote peut proposer des modifications de champs ; elles s'appliquent automatiquement.
-        </div>
+        <div className="text-[10.5px] text-subink mt-2 leading-snug">{t("copilotFooter")}</div>
       </div>
     </div>
   );

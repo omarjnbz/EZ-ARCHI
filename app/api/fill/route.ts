@@ -6,7 +6,9 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as Partial<ContractFields>;
+    const form = await req.formData();
+    const fieldsRaw = form.get("fields");
+    const body = JSON.parse(typeof fieldsRaw === "string" ? fieldsRaw : "{}") as Partial<ContractFields>;
 
     const merged: Partial<ContractFields> = {
       ...body,
@@ -17,7 +19,24 @@ export async function POST(req: NextRequest) {
     if (!merged.adresse_project)
       merged.adresse_project = [merged.commune, merged.province].filter(Boolean).join(", ");
 
-    const docx = fillContract(merged);
+    const templateFile = form.get("template");
+    let templateBuffer: Buffer | undefined;
+    if (templateFile instanceof File) {
+      templateBuffer = Buffer.from(await templateFile.arrayBuffer());
+    }
+
+    let docx: Buffer;
+    try {
+      docx = fillContract(merged, templateBuffer);
+    } catch (e: any) {
+      if (templateBuffer) {
+        return NextResponse.json(
+          { error: "invalid_template" },
+          { status: 400 }
+        );
+      }
+      throw e;
+    }
     const filename = `contrat-${(merged.nom_prenom || "client").replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.docx`;
 
     return new NextResponse(new Uint8Array(docx), {

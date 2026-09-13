@@ -1,19 +1,25 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { useLang } from "./LanguageProvider";
+import ProcessSteps, { type Phase } from "./ProcessSteps";
 
 type Props = {
   files: File[];
   setFiles: (f: File[]) => void;
   onExtract: () => void;
   extracting: boolean;
+  phase: Phase;
 };
 
-export default function UploadPanel({ files, setFiles, onExtract, extracting }: Props) {
+export default function UploadPanel({ files, setFiles, onExtract, extracting, phase }: Props) {
+  const { t } = useLang();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [hover, setHover] = useState(false);
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
+    setHover(false);
     const dropped = Array.from(e.dataTransfer.files);
     setFiles([...files, ...dropped]);
   }
@@ -28,24 +34,29 @@ export default function UploadPanel({ files, setFiles, onExtract, extracting }: 
   }
 
   return (
-    <div className="p-6 space-y-5">
-      <div>
-        <h2 className="serif text-xl">Documents client</h2>
-        <p className="text-xs text-muted mt-1">
-          CIN (recto/verso), certificat de propriété, calcul de contenances…
-        </p>
+    <div className="space-y-5">
+      <div className="px-1">
+        <h2 className="display text-2xl">{t("uploadTitle")}</h2>
+        <p className="text-[13px] text-subink mt-1">{t("uploadHint")}</p>
       </div>
 
       <div
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => { e.preventDefault(); setHover(true); }}
+        onDragLeave={() => setHover(false)}
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
-        className="border border-dashed border-line bg-white hover:border-ink/30 transition-colors cursor-pointer p-8 text-center"
+        className={[
+          "card cursor-pointer transition-all duration-300 ease-spring",
+          "p-8 text-center hover:shadow-lift",
+          hover ? "border-accent !border-2 scale-[1.01] !bg-[#F0F7FF]" : "",
+        ].join(" ")}
       >
-        <div className="serif text-base text-muted">
-          Glissez vos fichiers ici
+        <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-accent/15 to-accent/5 flex items-center justify-center text-accent text-xl mb-3">
+          ↑
         </div>
-        <div className="text-xs text-muted mt-1">PDF · JPG · PNG</div>
+        <div className="display text-lg">{t("uploadDrop")}</div>
+        <div className="text-xs text-subink mt-0.5">{t("uploadOr")}</div>
+        <div className="text-[11px] text-subink mt-3">{t("uploadFormats")}</div>
         <input
           ref={inputRef}
           type="file"
@@ -57,18 +68,26 @@ export default function UploadPanel({ files, setFiles, onExtract, extracting }: 
       </div>
 
       {files.length > 0 && (
-        <ul className="space-y-1">
+        <ul className="space-y-2 px-1">
           {files.map((f, i) => (
             <li
               key={i}
-              className="flex items-center justify-between bg-white border border-line px-3 py-2 text-sm fade-in"
+              className="flex items-center justify-between card pop-in"
+              style={{ padding: "10px 14px" }}
             >
-              <span className="truncate mr-2" title={f.name}>
-                {f.name}
-              </span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileIcon name={f.name} />
+                <div className="min-w-0">
+                  <div className="text-sm truncate">{f.name}</div>
+                  <div className="text-[11px] text-subink mono">
+                    {(f.size / 1024).toFixed(0)} KB
+                  </div>
+                </div>
+              </div>
               <button
-                onClick={() => removeFile(i)}
-                className="text-muted hover:text-accent text-xs"
+                onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                aria-label="remove"
+                className="w-7 h-7 rounded-full text-subink hover:text-ink hover:bg-soft transition-colors"
               >
                 ✕
               </button>
@@ -80,28 +99,40 @@ export default function UploadPanel({ files, setFiles, onExtract, extracting }: 
       <button
         onClick={onExtract}
         disabled={!files.length || extracting}
-        className="w-full h-10 bg-ink text-paper text-sm tracking-wide hover:bg-accent disabled:bg-line disabled:text-muted disabled:cursor-not-allowed transition-colors"
+        className="btn-primary w-full h-12 text-[15px]"
       >
         {extracting ? (
-          <span>
-            Extraction <span className="dot" /><span className="dot" /><span className="dot" />
+          <span className="inline-flex items-center gap-2">
+            {t("extracting")}
+            <span className="inline-flex">
+              <span className="dot" />
+              <span className="dot" />
+              <span className="dot" />
+            </span>
           </span>
         ) : (
-          "Extraire les données"
+          <span className="inline-flex items-center gap-2">
+            <span>✦</span> {t("extractCta")}
+          </span>
         )}
       </button>
 
-      <div className="pt-4 border-t border-line">
-        <h3 className="text-xs uppercase tracking-wider text-muted mb-2">
-          Comment ça marche
-        </h3>
-        <ol className="text-xs text-muted space-y-1.5 leading-relaxed">
-          <li>1. Déposez les pièces du dossier client.</li>
-          <li>2. L'IA extrait les champs (CIN, TF, superficie, etc.).</li>
-          <li>3. Ajustez avec le copilote à droite si besoin.</li>
-          <li>4. Téléchargez le contrat prêt à signer.</li>
-        </ol>
-      </div>
+      <ProcessSteps phase={phase} />
+    </div>
+  );
+}
+
+function FileIcon({ name }: { name: string }) {
+  const ext = name.split(".").pop()?.toUpperCase() || "FILE";
+  const isPdf = ext === "PDF";
+  return (
+    <div
+      className={[
+        "w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-semibold",
+        isPdf ? "bg-red-50 text-red-500" : "bg-blue-50 text-accent",
+      ].join(" ")}
+    >
+      {ext.slice(0, 3)}
     </div>
   );
 }

@@ -17,6 +17,8 @@ export type ContractFields = {
   honoraires_TTC: string;
   honoraires_TTC_lettres: string;
   adresse_project: string;
+  nom_du_projet: string;
+  taux_honoraires_lettres: string;
 };
 
 export const EMPTY_FIELDS: ContractFields = {
@@ -38,6 +40,8 @@ export const EMPTY_FIELDS: ContractFields = {
   honoraires_TTC: "",
   honoraires_TTC_lettres: "",
   adresse_project: "",
+  nom_du_projet: "",
+  taux_honoraires_lettres: "",
 };
 
 export const FIELD_LABELS: Record<keyof ContractFields, string> = {
@@ -59,7 +63,60 @@ export const FIELD_LABELS: Record<keyof ContractFields, string> = {
   honoraires_TTC: "Honoraires TTC",
   honoraires_TTC_lettres: "Honoraires TTC (lettres)",
   adresse_project: "Adresse du projet",
+  nom_du_projet: "Nom du projet",
+  taux_honoraires_lettres: "Taux honoraires (lettres)",
 };
+
+export type Source = "cin" | "tf" | "calcul" | "manual" | "computed";
+
+export const FIELD_SOURCES: Record<keyof ContractFields, Source[]> = {
+  civilite: ["cin"],
+  nom_prenom: ["cin"],
+  cin: ["cin"],
+  adresse: ["cin"],
+  province: ["tf"],
+  commune: ["tf"],
+  titre_foncier: ["tf"],
+  adresse_project: ["tf"],
+  nom_du_projet: ["manual"],
+  superficie_terrain: ["tf", "calcul"],
+  superficie_: ["tf", "calcul"],
+  superficie_plancher: ["manual"],
+  montant_estime_travaux: ["manual"],
+  prix_m: ["computed", "manual"],
+  taux_honoraires: ["manual"],
+  taux_honoraires_lettres: ["computed"],
+  montant_honoraires: ["computed"],
+  montant_TVA: ["computed"],
+  honoraires_TTC: ["computed"],
+  honoraires_TTC_lettres: ["computed"],
+};
+
+export const SOURCE_LABEL_FR: Record<Source, string> = {
+  cin: "CIN",
+  tf: "Titre foncier",
+  calcul: "Calcul de contenances",
+  manual: "À saisir",
+  computed: "Calculé",
+};
+
+export const SOURCE_LABEL_EN: Record<Source, string> = {
+  cin: "ID card",
+  tf: "Land title",
+  calcul: "Area calculation",
+  manual: "Manual",
+  computed: "Auto",
+};
+
+export function applySmartDefaults(f: ContractFields): Partial<ContractFields> {
+  const patch: Partial<ContractFields> = {};
+  if (!f.taux_honoraires) patch.taux_honoraires = "5";
+  if (!f.adresse_project && f.commune) {
+    patch.adresse_project = `Centre ${f.commune}${f.province ? `, ${f.province}` : ""}`;
+  }
+  if (!f.superficie_ && f.superficie_terrain) patch.superficie_ = f.superficie_terrain;
+  return patch;
+}
 
 export const FIELD_GROUPS: { title: string; keys: (keyof ContractFields)[] }[] = [
   {
@@ -68,7 +125,7 @@ export const FIELD_GROUPS: { title: string; keys: (keyof ContractFields)[] }[] =
   },
   {
     title: "Localisation projet",
-    keys: ["adresse_project", "commune", "province", "titre_foncier"],
+    keys: ["nom_du_projet", "adresse_project", "commune", "province", "titre_foncier"],
   },
   {
     title: "Superficies",
@@ -80,6 +137,7 @@ export const FIELD_GROUPS: { title: string; keys: (keyof ContractFields)[] }[] =
       "montant_estime_travaux",
       "prix_m",
       "taux_honoraires",
+      "taux_honoraires_lettres",
       "montant_honoraires",
       "montant_TVA",
       "honoraires_TTC",
@@ -89,18 +147,24 @@ export const FIELD_GROUPS: { title: string; keys: (keyof ContractFields)[] }[] =
 ];
 
 export function computeFinancials(input: Partial<ContractFields>): Partial<ContractFields> {
-  const cost = parseFloat((input.montant_estime_travaux || "").replace(/[^\d.]/g, ""));
+  const patch: Partial<ContractFields> = {};
   const rate = parseFloat((input.taux_honoraires || "").replace(/[^\d.]/g, ""));
-  if (!Number.isFinite(cost) || !Number.isFinite(rate)) return {};
-  const ht = cost * (rate / 100);
-  const tva = ht * 0.2;
-  const ttc = ht + tva;
-  return {
-    montant_honoraires: formatMAD(ht),
-    montant_TVA: formatMAD(tva),
-    honoraires_TTC: formatMAD(ttc),
-    honoraires_TTC_lettres: amountToWordsFR(ttc),
-  };
+  const rateInt = Math.round(rate);
+  if (Number.isFinite(rate) && rateInt > 0 && Math.abs(rate - rateInt) < 1e-9) {
+    patch.taux_honoraires_lettres = `${hundredsToWordsFR(rateInt)} pour cent`;
+  }
+
+  const cost = parseFloat((input.montant_estime_travaux || "").replace(/[^\d.]/g, ""));
+  if (Number.isFinite(cost) && Number.isFinite(rate)) {
+    const ht = cost * (rate / 100);
+    const tva = ht * 0.2;
+    const ttc = ht + tva;
+    patch.montant_honoraires = formatMAD(ht);
+    patch.montant_TVA = formatMAD(tva);
+    patch.honoraires_TTC = formatMAD(ttc);
+    patch.honoraires_TTC_lettres = amountToWordsFR(ttc);
+  }
+  return patch;
 }
 
 export function formatMAD(n: number): string {
