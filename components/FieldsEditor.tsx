@@ -30,7 +30,7 @@ export default function FieldsEditor({ fields, onChange, justFilled, extractedOn
   const completion = (filledCount / totalCount) * 100;
 
   return (
-    <div className="max-w-3xl mx-auto px-10 py-10 space-y-10">
+    <div className="max-w-4xl mx-auto px-10 py-10 space-y-10">
       <div className="space-y-4">
         <div className="text-[11px] uppercase tracking-[0.12em] text-subink font-medium">
           {t("editorEyebrow")}
@@ -41,7 +41,7 @@ export default function FieldsEditor({ fields, onChange, justFilled, extractedOn
         <div className="flex items-center gap-4 pt-2">
           <div className="h-1.5 w-48 rounded-full bg-soft overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-accent to-[#4ba1ff] rounded-full transition-all duration-700 ease-spring"
+              className="h-full bg-accent rounded-full transition-all duration-700 ease-spring"
               style={{ width: `${completion}%` }}
             />
           </div>
@@ -77,7 +77,7 @@ export default function FieldsEditor({ fields, onChange, justFilled, extractedOn
       })}
 
       <div className="pt-6 border-t border-line/60 text-[12px] text-subink leading-relaxed">
-        💡 {t("editorTip")}
+        {t("editorTip")}
       </div>
     </div>
   );
@@ -114,8 +114,8 @@ function FieldRow({
           {value ? (
             sources.map((s) => <SourceChip key={s} source={s} />)
           ) : showMissing ? (
-            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning-fg)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning-fg)]" />
               {t("badgeMissing")}
             </span>
           ) : (
@@ -123,15 +123,15 @@ function FieldRow({
           )}
         </div>
       </div>
-      <div className={highlight ? "glow-fill rounded-xl" : ""}>
+      <div className={highlight ? "glow-fill rounded-lg" : ""}>
         {isLong ? (
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
             rows={2}
             className={[
-              "w-full bg-white border rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none focus:ring-4 focus:ring-accent/15 resize-none transition-all duration-300",
-              highlight ? "border-success" : value ? "border-line" : showMissing ? "border-amber-300" : "border-line",
+              "w-full bg-canvas border rounded-lg px-3.5 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none transition-all duration-200",
+              highlight ? "border-success" : value ? "border-line" : showMissing ? "border-[var(--warning-border)]" : "border-line",
               "focus:border-accent",
             ].join(" ")}
           />
@@ -140,8 +140,8 @@ function FieldRow({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             className={[
-              "w-full bg-white border rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none focus:ring-4 focus:ring-accent/15 transition-all duration-300",
-              highlight ? "border-success" : value ? "border-line" : showMissing ? "border-amber-300" : "border-line",
+              "w-full bg-canvas border rounded-lg px-3.5 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all duration-200",
+              highlight ? "border-success" : value ? "border-line" : showMissing ? "border-[var(--warning-border)]" : "border-line",
               "focus:border-accent",
             ].join(" ")}
           />
@@ -165,14 +165,14 @@ function SourceChip({ source, muted }: { source: Source; muted?: boolean }) {
       : "sourceComputed";
   const color =
     source === "cin"
-      ? "bg-blue-50 text-blue-700 border-blue-200"
+      ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/25"
       : source === "tf"
-      ? "bg-purple-50 text-purple-700 border-purple-200"
+      ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/25"
       : source === "calcul"
-      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/25"
       : source === "manual"
-      ? "bg-slate-50 text-slate-700 border-slate-200"
-      : "bg-orange-50 text-orange-700 border-orange-200";
+      ? "bg-soft text-subink border-line"
+      : "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/25";
   return (
     <span
       className={[

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "docxtemplater": "^3.50.0",
+    "geist": "^1.7.2",
     "next": "14.2.15",
     "pdf-parse": "^1.1.1",
     "pizzip": "^3.1.7",

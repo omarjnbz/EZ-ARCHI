@@ -3,10 +3,11 @@
 import { useState, useCallback, useRef } from "react";
 import UploadPanel from "./UploadPanel";
 import FieldsEditor from "./FieldsEditor";
-import CopilotChat from "./CopilotChat";
+import CopilotDock from "./CopilotDock";
 import TemplateManager from "./TemplateManager";
 import { type Phase } from "./ProcessSteps";
 import { useLang } from "./LanguageProvider";
+import { useTheme } from "./ThemeProvider";
 import {
   EMPTY_FIELDS,
   computeFinancials,
@@ -116,7 +117,7 @@ export default function Workspace() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-canvas text-ink overflow-hidden hero-bg">
+    <div className="h-screen flex flex-col bg-canvas text-ink overflow-hidden">
       <Header
         lang={lang}
         setLang={setLang}
@@ -125,7 +126,7 @@ export default function Workspace() {
       />
       {downloadError && (
         <div className="px-5 pt-3 -mb-1">
-          <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[12.5px] text-amber-800 leading-relaxed fade-in">
+          <div className="flex items-start justify-between gap-3 rounded-lg border px-4 py-2.5 text-[12.5px] leading-relaxed fade-in border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning-fg)]">
             <span>{downloadError}</span>
             <button
               onClick={() => setDownloadError(null)}
@@ -137,8 +138,8 @@ export default function Workspace() {
           </div>
         </div>
       )}
-      <div className="flex-1 grid grid-cols-[420px_1fr_440px] gap-5 p-5 overflow-hidden">
-        <aside className="overflow-y-auto pr-1 space-y-8">
+      <div className="flex-1 grid grid-cols-[272px_1fr] gap-4 p-4 overflow-hidden">
+        <aside className="overflow-y-auto pr-1 space-y-6">
           <UploadPanel
             files={files}
             setFiles={setFiles}
@@ -152,7 +153,7 @@ export default function Workspace() {
         </aside>
         <main
           ref={editorScrollRef}
-          className="overflow-y-auto card !rounded-[28px] relative"
+          className="overflow-y-auto card !rounded-xl relative"
         >
           <FieldsEditor
             fields={fields}
@@ -161,10 +162,8 @@ export default function Workspace() {
             extractedOnce={extractedOnce}
           />
         </main>
-        <aside className="overflow-hidden">
-          <CopilotChat fields={fields} applyPatch={updateFields} />
-        </aside>
       </div>
+      <CopilotDock fields={fields} applyPatch={updateFields} />
     </div>
   );
 }
@@ -182,13 +181,13 @@ function Header({
 }) {
   const { t } = useLang();
   return (
-    <header className="flex items-center justify-between px-6 h-16 border-b border-line/60 bg-white/80 backdrop-blur-xl sticky top-0 z-10">
+    <header className="flex items-center justify-between px-6 h-16 border-b border-line bg-canvas/85 backdrop-blur-xl sticky top-0 z-10">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-accent to-[#4ba1ff] flex items-center justify-center text-white display text-lg shadow-soft">
+        <div className="w-8 h-8 rounded-md bg-ink flex items-center justify-center text-canvas display text-[13px]">
           EA
         </div>
         <div className="flex flex-col">
-          <span className="display text-[17px] leading-none">EZ-ARCHI</span>
+          <span className="display text-[15px] leading-none">EZ-ARCHI</span>
           <span className="text-[11px] text-subink leading-none mt-1 tracking-wide uppercase">
             {t("tagline")}
           </span>
@@ -196,11 +195,12 @@ function Header({
       </div>
       <div className="flex items-center gap-3">
         <LangToggle lang={lang} setLang={setLang} />
+        <ThemeToggle />
         <span className="text-xs text-subink hidden md:inline">{t("legacy")}</span>
         <button
           onClick={onDownload}
           disabled={!ready}
-          className="btn-primary h-10 px-5 text-sm"
+          className="btn-primary h-9 px-4 text-[13px]"
         >
           {t("downloadCta")}
         </button>
@@ -217,7 +217,7 @@ function LangToggle({
   setLang: (l: "fr" | "en") => void;
 }) {
   return (
-    <div className="relative inline-flex bg-soft rounded-full p-0.5 border border-line/70">
+    <div className="relative inline-flex bg-soft rounded-md p-0.5 border border-line">
       {(["fr", "en"] as const).map((code) => {
         const active = lang === code;
         return (
@@ -225,18 +225,38 @@ function LangToggle({
             key={code}
             onClick={() => setLang(code)}
             className={[
-              "relative z-10 px-3 h-7 text-xs font-medium rounded-full transition-all duration-300",
-              active ? "text-white" : "text-subink hover:text-ink",
+              "relative z-10 px-2.5 h-7 text-[11px] font-medium rounded transition-colors duration-150",
+              active ? "bg-accent text-accentFg" : "text-subink hover:text-ink",
             ].join(" ")}
-            style={{
-              background: active ? "linear-gradient(180deg,#0077ED,#0066CF)" : "transparent",
-              boxShadow: active ? "0 1px 2px rgba(0,0,0,.06), 0 4px 12px rgba(0,113,227,.28)" : undefined,
-            }}
           >
             {code.toUpperCase()}
           </button>
         );
       })}
     </div>
+  );
+}
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === "dark";
+  return (
+    <button
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      aria-label="toggle theme"
+      title={isDark ? "Light mode" : "Dark mode"}
+      className="w-8 h-8 rounded-md border border-line flex items-center justify-center text-subink hover:text-ink hover:bg-soft transition-colors"
+    >
+      {isDark ? (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+          <circle cx="12" cy="12" r="4.5" />
+          <path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" strokeLinecap="round" />
+        </svg>
+      ) : (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+          <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
   );
 }

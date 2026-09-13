@@ -70,10 +70,10 @@ export default function CopilotChat({ fields, applyPatch }: Props) {
   ];
 
   return (
-    <div className="flex flex-col h-full card !rounded-[28px] overflow-hidden">
+    <div className="flex flex-col h-full card !rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-line/60 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-[#7B4BFF] flex items-center justify-center text-white text-xs font-semibold">
+          <div className="w-8 h-8 rounded-md bg-ink flex items-center justify-center text-canvas text-xs font-semibold">
             AI
           </div>
           <div>
@@ -98,7 +98,7 @@ export default function CopilotChat({ fields, applyPatch }: Props) {
               <p className="text-[12.5px] text-subink leading-relaxed">{t("copilotHowBody")}</p>
             </div>
 
-            <div className="rounded-2xl bg-white border border-line/70 p-4">
+            <div className="rounded-2xl bg-surface border border-line/70 p-4">
               <p className="text-[13px] leading-relaxed text-ink">{t("copilotIntro")}</p>
             </div>
 
@@ -122,7 +122,7 @@ export default function CopilotChat({ fields, applyPatch }: Props) {
             key={i}
             className={
               m.role === "user"
-                ? "ml-auto max-w-[88%] bg-accent text-white px-3.5 py-2.5 text-[13.5px] leading-relaxed pop-in rounded-2xl rounded-tr-md"
+                ? "ml-auto max-w-[88%] bg-accent text-accentFg px-3.5 py-2.5 text-[13.5px] leading-relaxed pop-in rounded-2xl rounded-tr-md"
                 : "mr-auto max-w-[92%] bg-soft text-ink px-3.5 py-2.5 text-[13.5px] leading-relaxed pop-in rounded-2xl rounded-tl-md"
             }
           >
@@ -140,7 +140,7 @@ export default function CopilotChat({ fields, applyPatch }: Props) {
         )}
       </div>
 
-      <div className="border-t border-line/60 p-3 bg-white/60 backdrop-blur">
+      <div className="border-t border-line/60 p-3 bg-canvas/60 backdrop-blur">
         <div className="flex gap-2 items-end">
           <textarea
             value={input}
@@ -153,7 +153,7 @@ export default function CopilotChat({ fields, applyPatch }: Props) {
             }}
             placeholder={t("copilotPlaceholder")}
             rows={2}
-            className="flex-1 bg-white border border-line rounded-2xl px-3.5 py-2.5 text-[13.5px] resize-none focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/15 transition-all"
+            className="flex-1 bg-canvas border border-line rounded-xl px-3.5 py-2.5 text-[13.5px] resize-none focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
           />
           <button
             onClick={() => send()}

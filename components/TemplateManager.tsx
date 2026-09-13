@@ -7,6 +7,9 @@ type SavedTemplate = { id: string; name: string; dataUrl: string; addedAt: numbe
 
 const LIST_KEY = "ez-archi-templates-v1";
 const ACTIVE_KEY = "ez-archi-active-template-v1";
+const NAJIB_ID = "najib";
+const NAJIB_TEMPLATE_URL = "/templates/najib-dadouche.docx";
+const NAJIB_TEMPLATE_NAME = "Najib Dadouche";
 
 function loadSaved(): SavedTemplate[] {
   try {
@@ -81,6 +84,10 @@ export default function TemplateManager({ onActiveChange }: Props) {
     const list = loadSaved();
     setSaved(list);
     const lastActive = localStorage.getItem(ACTIVE_KEY);
+    if (lastActive === NAJIB_ID) {
+      selectNajib();
+      return;
+    }
     const match = lastActive ? list.find((tpl) => tpl.id === lastActive) : undefined;
     if (match) {
       setActiveId(match.id);
@@ -96,6 +103,22 @@ export default function TemplateManager({ onActiveChange }: Props) {
       localStorage.setItem(ACTIVE_KEY, "default");
     } catch {}
     onActiveChange(null, null);
+  }
+
+  async function selectNajib() {
+    setActiveId(NAJIB_ID);
+    setError(null);
+    try {
+      localStorage.setItem(ACTIVE_KEY, NAJIB_ID);
+    } catch {}
+    try {
+      const res = await fetch(NAJIB_TEMPLATE_URL);
+      if (!res.ok) throw new Error("fetch failed");
+      const blob = await res.blob();
+      onActiveChange(blob, NAJIB_TEMPLATE_NAME);
+    } catch {
+      setError(t("templateFillError"));
+    }
   }
 
   function selectSaved(tpl: SavedTemplate) {
@@ -157,31 +180,45 @@ export default function TemplateManager({ onActiveChange }: Props) {
   return (
     <div className="space-y-3">
       <div className="px-1">
-        <h2 className="display text-2xl">{t("templateTitle")}</h2>
-        <p className="text-[13px] text-subink mt-1 leading-relaxed">{t("templateHint")}</p>
+        <h2 className="display text-lg">{t("templateTitle")}</h2>
+        <p className="text-[12px] text-subink mt-0.5 leading-snug">{t("templateHint")}</p>
       </div>
 
       <div className="card divide-y divide-line/60 overflow-hidden">
-        <TemplateRow
+        <ProfileRow
           active={activeId === "default"}
+          initials="OD"
           label={t("templateDefaultLabel")}
           sublabel={t("templateDefaultSub")}
           onSelect={selectDefault}
         />
-        {saved.map((tpl) => (
-          <TemplateRow
-            key={tpl.id}
-            active={activeId === tpl.id}
-            label={tpl.name}
-            sublabel={new Date(tpl.addedAt).toLocaleDateString()}
-            onSelect={() => selectSaved(tpl)}
-            onRemove={() => removeSaved(tpl.id)}
-          />
-        ))}
+        <ProfileRow
+          active={activeId === NAJIB_ID}
+          initials="ND"
+          label={NAJIB_TEMPLATE_NAME}
+          sublabel={t("templateNajibSub")}
+          onSelect={selectNajib}
+        />
       </div>
 
+      {saved.length > 0 && (
+        <div className="card divide-y divide-line/60 overflow-hidden">
+          {saved.map((tpl) => (
+            <ProfileRow
+              key={tpl.id}
+              active={activeId === tpl.id}
+              initials={tpl.name.slice(0, 2).toUpperCase()}
+              label={tpl.name}
+              sublabel={new Date(tpl.addedAt).toLocaleDateString()}
+              onSelect={() => selectSaved(tpl)}
+              onRemove={() => removeSaved(tpl.id)}
+            />
+          ))}
+        </div>
+      )}
+
       {error && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] text-amber-800 leading-relaxed">
+        <div className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] px-3.5 py-2.5 text-[12.5px] text-[var(--warning-fg)] leading-relaxed">
           {error}
         </div>
       )}
@@ -196,7 +233,7 @@ export default function TemplateManager({ onActiveChange }: Props) {
             value={pendingName}
             onChange={(e) => setPendingName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && confirmAdd()}
-            className="w-full bg-white border border-line rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/15 transition-all"
+            className="w-full bg-canvas border border-line rounded-lg px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
           />
           <div className="flex gap-2 justify-end">
             <button onClick={cancelAdd} className="btn-ghost h-9 px-4 text-[13px]">
@@ -218,7 +255,7 @@ export default function TemplateManager({ onActiveChange }: Props) {
           />
           <button
             onClick={() => inputRef.current?.click()}
-            className="btn-ghost w-full h-11 text-[14px]"
+            className="w-full text-left px-1 text-[12px] text-subink hover:text-ink transition-colors"
           >
             {t("templateAddCta")}
           </button>
@@ -228,14 +265,16 @@ export default function TemplateManager({ onActiveChange }: Props) {
   );
 }
 
-function TemplateRow({
+function ProfileRow({
   active,
+  initials,
   label,
   sublabel,
   onSelect,
   onRemove,
 }: {
   active: boolean;
+  initials: string;
   label: string;
   sublabel: string;
   onSelect: () => void;
@@ -245,24 +284,27 @@ function TemplateRow({
     <div
       onClick={onSelect}
       className={[
-        "flex items-center justify-between gap-3 px-4 py-3 cursor-pointer transition-colors",
-        active ? "bg-[#F0F7FF]" : "hover:bg-soft",
+        "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors",
+        active ? "bg-soft" : "hover:bg-soft/60",
       ].join(" ")}
     >
-      <div className="flex items-center gap-3 min-w-0">
-        <span
-          className={[
-            "w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors",
-            active ? "border-accent" : "border-line",
-          ].join(" ")}
-        >
-          {active && <span className="w-2 h-2 rounded-full bg-accent" />}
-        </span>
-        <div className="min-w-0">
-          <div className="text-[14px] truncate">{label}</div>
-          <div className="text-[11px] text-subink truncate">{sublabel}</div>
-        </div>
+      <div
+        className={[
+          "w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 transition-colors",
+          active ? "bg-ink text-canvas" : "bg-soft border border-line text-subink",
+        ].join(" ")}
+      >
+        {initials}
       </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] leading-tight truncate">{label}</div>
+        <div className="text-[11px] text-subink leading-tight truncate">{sublabel}</div>
+      </div>
+      {active && (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-ink shrink-0">
+          <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
       {onRemove && (
         <button
           onClick={(e) => {
@@ -270,7 +312,7 @@ function TemplateRow({
             onRemove();
           }}
           aria-label="remove"
-          className="w-7 h-7 rounded-full text-subink hover:text-ink hover:bg-white transition-colors flex-shrink-0"
+          className="w-6 h-6 rounded-full text-subink hover:text-ink hover:bg-canvas transition-colors flex-shrink-0"
         >
           ✕
         </button>

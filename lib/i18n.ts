@@ -8,12 +8,12 @@ export const dict = {
     downloadCta: "Télécharger le contrat",
 
     // template manager
-    templateTitle: "Modèle de contrat",
-    templateHint:
-      "Choisissez le modèle utilisé pour générer le contrat. Un modèle personnalisé doit contenir des balises {{nom_du_champ}} (ex : {{nom_prenom}}, {{cin}}, {{titre_foncier}}) à l'endroit voulu dans le document Word.",
-    templateDefaultLabel: "Modèle par défaut",
-    templateDefaultSub: "LEGACY ARCHITECTS · Contrat type CNOA",
-    templateAddCta: "Importer un modèle .docx",
+    templateTitle: "Profil",
+    templateHint: "Qui signe ce contrat ? Chaque profil a son propre modèle, avec son en-tête et ses coordonnées.",
+    templateDefaultLabel: "Omar Dadouche",
+    templateDefaultSub: "Modèle par défaut · LEGACY ARCHITECTS",
+    templateNajibSub: "Architecte associé",
+    templateAddCta: "+ Importer un autre modèle",
     templateNamePrompt: "Nom de ce modèle",
     templateInvalid: "Ce fichier n'est pas reconnu comme un document Word.",
     templateLegacyDoc:
@@ -86,6 +86,8 @@ export const dict = {
       "Bonjour Omar. Dépose les pièces du dossier, je remplis le contrat. Tu peux aussi me demander de calculer les honoraires, vérifier la cohérence, ou reformuler une adresse.",
     copilotPlaceholder: "Posez une question, demandez un calcul…",
     copilotFooter: "Le copilote peut proposer des modifications de champs — elles s'appliquent automatiquement.",
+    copilotOpen: "Ouvrir le copilote",
+    copilotClose: "Fermer le copilote",
 
     copilotHowTitle: "Comment utiliser le copilote",
     copilotHowBody:
@@ -120,12 +122,12 @@ export const dict = {
     downloadCta: "Download contract",
 
     // template manager
-    templateTitle: "Contract template",
-    templateHint:
-      "Choose which template generates the contract. A custom template must contain {{field_name}} tags (e.g. {{nom_prenom}}, {{cin}}, {{titre_foncier}}) wherever a value should appear in the Word document.",
-    templateDefaultLabel: "Default template",
-    templateDefaultSub: "LEGACY ARCHITECTS · CNOA unified contract",
-    templateAddCta: "Import a .docx template",
+    templateTitle: "Profile",
+    templateHint: "Who's signing this contract? Each profile has its own template, letterhead, and contact details.",
+    templateDefaultLabel: "Omar Dadouche",
+    templateDefaultSub: "Default template · LEGACY ARCHITECTS",
+    templateNajibSub: "Associate architect",
+    templateAddCta: "+ Import another template",
     templateNamePrompt: "Name this template",
     templateInvalid: "This file isn't recognized as a Word document.",
     templateLegacyDoc:
@@ -198,6 +200,8 @@ export const dict = {
       "Hi Omar. Drop the client files and I'll fill the contract. You can also ask me to compute fees, check consistency, or rephrase an address.",
     copilotPlaceholder: "Ask a question, request a calculation…",
     copilotFooter: "The copilot can propose field edits — they're applied automatically.",
+    copilotOpen: "Open copilot",
+    copilotClose: "Close copilot",
 
     copilotHowTitle: "How to use the copilot",
     copilotHowBody:

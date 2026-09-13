@@ -34,10 +34,10 @@ export default function UploadPanel({ files, setFiles, onExtract, extracting, ph
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="px-1">
-        <h2 className="display text-2xl">{t("uploadTitle")}</h2>
-        <p className="text-[13px] text-subink mt-1">{t("uploadHint")}</p>
+        <h2 className="display text-lg">{t("uploadTitle")}</h2>
+        <p className="text-[12px] text-subink mt-0.5 leading-snug">{t("uploadHint")}</p>
       </div>
 
       <div
@@ -46,17 +46,20 @@ export default function UploadPanel({ files, setFiles, onExtract, extracting, ph
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
         className={[
-          "card cursor-pointer transition-all duration-300 ease-spring",
-          "p-8 text-center hover:shadow-lift",
-          hover ? "border-accent !border-2 scale-[1.01] !bg-[#F0F7FF]" : "",
+          "card cursor-pointer transition-all duration-200",
+          "px-3.5 py-3 flex items-center gap-3 text-left",
+          hover ? "!border-ink !border-2 !bg-soft" : "",
         ].join(" ")}
       >
-        <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-accent/15 to-accent/5 flex items-center justify-center text-accent text-xl mb-3">
+        <div className="w-8 h-8 rounded-md bg-soft border border-line flex items-center justify-center text-ink text-sm shrink-0">
           ↑
         </div>
-        <div className="display text-lg">{t("uploadDrop")}</div>
-        <div className="text-xs text-subink mt-0.5">{t("uploadOr")}</div>
-        <div className="text-[11px] text-subink mt-3">{t("uploadFormats")}</div>
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium leading-tight truncate">{t("uploadDrop")}</div>
+          <div className="text-[11px] text-subink leading-tight truncate">
+            {t("uploadOr")} · {t("uploadFormats")}
+          </div>
+        </div>
         <input
           ref={inputRef}
           type="file"
@@ -99,7 +102,7 @@ export default function UploadPanel({ files, setFiles, onExtract, extracting, ph
       <button
         onClick={onExtract}
         disabled={!files.length || extracting}
-        className="btn-primary w-full h-12 text-[15px]"
+        className="btn-primary w-full h-10 text-[13.5px]"
       >
         {extracting ? (
           <span className="inline-flex items-center gap-2">
@@ -124,14 +127,8 @@ export default function UploadPanel({ files, setFiles, onExtract, extracting, ph
 
 function FileIcon({ name }: { name: string }) {
   const ext = name.split(".").pop()?.toUpperCase() || "FILE";
-  const isPdf = ext === "PDF";
   return (
-    <div
-      className={[
-        "w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-semibold",
-        isPdf ? "bg-red-50 text-red-500" : "bg-blue-50 text-accent",
-      ].join(" ")}
-    >
+    <div className="w-9 h-9 rounded-md bg-soft border border-line flex items-center justify-center text-[10px] font-semibold text-subink">
       {ext.slice(0, 3)}
     </div>
   );

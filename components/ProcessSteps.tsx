@@ -70,7 +70,7 @@ export default function ProcessSteps({ phase }: { phase: Phase }) {
               <div key={step} className="flex flex-col items-center text-center">
                 <div
                   className={[
-                    "w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium border-2 bg-white transition-all duration-500",
+                    "w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium border-2 bg-surface transition-all duration-500",
                     done && "border-accent text-accent",
                     active && "border-accent text-accent ring-pulse",
                     !done && !active && "border-line text-subink",
