@@ -7,6 +7,19 @@ import type { ContractFields } from "./schema";
 const TEMPLATE_PATH = path.join(process.cwd(), "templates", "contract-template.docx");
 
 /**
+ * Defensive normalization for a known corruption pattern: macOS `textutil`'s
+ * .doc -> .docx conversion emits the invalid element <w:sz-cs> (a hyphen)
+ * instead of the real OOXML element <w:szCs>. Every other tool tolerates the
+ * typo (it's well-formed XML, just schema-invalid), but Word's own parser
+ * rejects it as "unreadable content" and silently strips whatever it can't
+ * parse on recovery — which is what caused missing/garbled sections in
+ * templates converted this way. Cheap and safe to always normalize.
+ */
+function sanitizeXml(xml: string): string {
+  return xml.replace(/<(\/?)w:sz-cs\b/g, "<$1w:szCs");
+}
+
+/**
  * A handful of field names people naturally use when typing {{tags}} in Word
  * differ slightly from this app's own schema keys. Map both directions so
  * either spelling fills correctly regardless of which side is "authoritative".
@@ -225,7 +238,7 @@ export function detectSupportedFields(templateBuffer?: Buffer): Set<string> {
   for (const fileName of TEMPLATE_PARTS) {
     const file = zip.file(fileName);
     if (!file) continue;
-    const xml = file.asText();
+    const xml = sanitizeXml(file.asText());
 
     for (const m of xml.matchAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g)) normalize(m[1]);
     for (const m of xml.matchAll(/<w:bookmarkStart w:id="\d+" w:name="([a-zA-Z_][a-zA-Z0-9_]*)"\/>/g)) normalize(m[1]);
@@ -252,7 +265,7 @@ export function fillContract(fields: Partial<ContractFields>, templateBuffer?: B
   for (const fileName of TEMPLATE_PARTS) {
     const file = zip.file(fileName);
     if (!file) continue;
-    let xml = file.asText();
+    let xml = sanitizeXml(file.asText());
     xml = replaceBookmarkFields(xml, fields);
     xml = replaceFields(xml, fields);
     xml = replaceSimpleFields(xml, fields);
