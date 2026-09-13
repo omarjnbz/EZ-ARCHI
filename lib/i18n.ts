@@ -24,6 +24,15 @@ export const dict = {
     cancel: "Annuler",
     save: "Enregistrer",
 
+    // document preview
+    previewTitle: "Aperçu du contrat",
+    previewClose: "Fermer l'aperçu",
+    previewHint: "Vérifiez le contenu avant de télécharger — vous pouvez encore modifier les champs.",
+    previewEdit: "Modifier",
+    previewDownload: "Télécharger le contrat",
+    previewDownloading: "Génération…",
+    previewError: "Impossible de générer l'aperçu. Réessayez, ou modifiez les champs et réessayez.",
+
     // upload panel
     uploadTitle: "Documents du client",
     uploadHint: "CIN (recto/verso), certificat de propriété, calcul de contenances…",
@@ -141,6 +150,15 @@ export const dict = {
       "Couldn't generate the contract with this template. Check that the .docx file isn't corrupted.",
     cancel: "Cancel",
     save: "Save",
+
+    // document preview
+    previewTitle: "Contract preview",
+    previewClose: "Close preview",
+    previewHint: "Check the content before downloading — you can still edit the fields.",
+    previewEdit: "Edit",
+    previewDownload: "Download contract",
+    previewDownloading: "Generating…",
+    previewError: "Couldn't generate the preview. Try again, or edit the fields and retry.",
 
     // upload panel
     uploadTitle: "Client documents",

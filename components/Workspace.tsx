@@ -5,6 +5,7 @@ import UploadPanel from "./UploadPanel";
 import FieldsEditor from "./FieldsEditor";
 import CopilotDock from "./CopilotDock";
 import TemplateManager from "./TemplateManager";
+import DocumentPreviewModal from "./DocumentPreviewModal";
 import { type Phase } from "./ProcessSteps";
 import { useLang } from "./LanguageProvider";
 import { useTheme } from "./ThemeProvider";
@@ -27,6 +28,8 @@ export default function Workspace() {
   const [customTemplate, setCustomTemplate] = useState<ActiveTemplate>(null);
   const [supportedFields, setSupportedFields] = useState<Set<string> | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const editorScrollRef = useRef<HTMLDivElement>(null);
 
   const updateFields = useCallback((patch: Partial<ContractFields>) => {
@@ -87,14 +90,14 @@ export default function Workspace() {
   }
 
   async function downloadContract() {
-    setPhase("compose");
+    setDownloading(true);
     setDownloadError(null);
     const fd = new FormData();
     fd.append("fields", JSON.stringify(fields));
     if (customTemplate) fd.append("template", customTemplate.blob, `${customTemplate.name}.docx`);
     const res = await fetch("/api/fill", { method: "POST", body: fd });
     if (!res.ok) {
-      setPhase("idle");
+      setDownloading(false);
       const data = await res.json().catch(() => null);
       const key =
         data?.error === "legacy_doc_format"
@@ -114,7 +117,8 @@ export default function Workspace() {
     a.download = m ? m[1] : "contract.docx";
     a.click();
     URL.revokeObjectURL(url);
-    setPhase("ready");
+    setDownloading(false);
+    setPreviewOpen(false);
   }
 
   return (
@@ -122,7 +126,7 @@ export default function Workspace() {
       <Header
         lang={lang}
         setLang={setLang}
-        onDownload={downloadContract}
+        onDownload={() => setPreviewOpen(true)}
         ready={phase === "ready" || phase === "compose"}
       />
       {downloadError && (
@@ -169,6 +173,17 @@ export default function Workspace() {
         </main>
       </div>
       <CopilotDock fields={fields} applyPatch={updateFields} />
+
+      {previewOpen && (
+        <DocumentPreviewModal
+          fields={fields}
+          template={customTemplate}
+          templateLabel={customTemplate?.name || t("templateDefaultLabel")}
+          onClose={() => setPreviewOpen(false)}
+          onConfirmDownload={downloadContract}
+          downloading={downloading}
+        />
+      )}
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import mammoth from "mammoth";
 import { fillContract, detectDocFormat } from "@/lib/docx-fill";
 import { mergeFieldsForFill, type ContractFields } from "@/lib/schema";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,21 +31,13 @@ export async function POST(req: NextRequest) {
       docx = fillContract(merged, templateBuffer);
     } catch (e: any) {
       if (templateBuffer) {
-        return NextResponse.json(
-          { error: "invalid_template" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "invalid_template" }, { status: 400 });
       }
       throw e;
     }
-    const filename = `contrat-${(merged.nom_prenom || "client").replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.docx`;
 
-    return new NextResponse(new Uint8Array(docx), {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-      },
-    });
+    const { value: html } = await mammoth.convertToHtml({ buffer: docx });
+    return NextResponse.json({ html });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }

@@ -167,6 +167,18 @@ export function computeFinancials(input: Partial<ContractFields>): Partial<Contr
   return patch;
 }
 
+/** Shared by /api/fill and /api/preview so both produce identical output for the same fields. */
+export function mergeFieldsForFill(body: Partial<ContractFields>): Partial<ContractFields> {
+  const merged: Partial<ContractFields> = {
+    ...body,
+    ...computeFinancials(body),
+  };
+  if (!merged.superficie_) merged.superficie_ = merged.superficie_terrain || "";
+  if (!merged.adresse_project)
+    merged.adresse_project = [merged.commune, merged.province].filter(Boolean).join(", ");
+  return merged;
+}
+
 export function formatMAD(n: number): string {
   return new Intl.NumberFormat("fr-FR", {
     minimumFractionDigits: 2,

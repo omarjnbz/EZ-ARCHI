@@ -93,16 +93,17 @@ export default function TemplateManager({ onActiveChange }: Props) {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingName, setPendingName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ src: string; top: number; left: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{ src: string; label: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function showPreview(e: React.MouseEvent, src: string) {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setPreview({ src, top: rect.top, left: rect.right + 10 });
-  }
-  function hidePreview() {
-    setPreview(null);
-  }
+  useEffect(() => {
+    if (!lightbox) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setLightbox(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   useEffect(() => {
     const list = loadSaved();
@@ -223,8 +224,7 @@ export default function TemplateManager({ onActiveChange }: Props) {
           label={t("templateDefaultLabel")}
           sublabel={t("templateDefaultSub")}
           onSelect={selectDefault}
-          onPreviewIn={(e) => showPreview(e, OMAR_PREVIEW)}
-          onPreviewOut={hidePreview}
+          onPreview={() => setLightbox({ src: OMAR_PREVIEW, label: t("templateDefaultLabel") })}
         />
         <ProfileRow
           active={activeId === NAJIB_ID}
@@ -232,8 +232,7 @@ export default function TemplateManager({ onActiveChange }: Props) {
           label={NAJIB_TEMPLATE_NAME}
           sublabel={t("templateNajibSub")}
           onSelect={selectNajib}
-          onPreviewIn={(e) => showPreview(e, NAJIB_PREVIEW)}
-          onPreviewOut={hidePreview}
+          onPreview={() => setLightbox({ src: NAJIB_PREVIEW, label: NAJIB_TEMPLATE_NAME })}
         />
       </div>
 
@@ -298,14 +297,34 @@ export default function TemplateManager({ onActiveChange }: Props) {
         </>
       )}
 
-      {preview && (
+      {lightbox && (
         <div
-          className="fixed z-40 w-56 rounded-lg border border-line bg-surface shadow-lift overflow-hidden pop-in pointer-events-none"
-          style={{ top: preview.top, left: preview.left }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setLightbox(null)}
         >
-          <img src={preview.src} alt="" className="w-full h-auto block" />
-          <div className="px-2.5 py-1.5 text-[10px] text-subink border-t border-line">
-            {t("templatePreviewHint")}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm fade-in" />
+          <div
+            className="relative w-full max-w-[420px] card !rounded-xl overflow-hidden pop-in shadow-lift"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+              <span className="text-[13px] font-medium truncate">{lightbox.label}</span>
+              <button
+                onClick={() => setLightbox(null)}
+                aria-label={t("previewClose")}
+                className="w-7 h-7 rounded-md border border-line flex items-center justify-center text-subink hover:text-ink hover:bg-soft transition-colors shrink-0"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <img src={lightbox.src} alt="" className="w-full h-auto block" />
+            <div className="px-4 py-2.5 text-[11px] text-subink border-t border-line">
+              {t("templatePreviewHint")}
+            </div>
           </div>
         </div>
       )}
@@ -320,8 +339,7 @@ function ProfileRow({
   sublabel,
   onSelect,
   onRemove,
-  onPreviewIn,
-  onPreviewOut,
+  onPreview,
 }: {
   active: boolean;
   initials: string;
@@ -329,16 +347,13 @@ function ProfileRow({
   sublabel: string;
   onSelect: () => void;
   onRemove?: () => void;
-  onPreviewIn?: (e: React.MouseEvent) => void;
-  onPreviewOut?: () => void;
+  onPreview?: () => void;
 }) {
   return (
     <div
       onClick={onSelect}
-      onMouseEnter={onPreviewIn}
-      onMouseLeave={onPreviewOut}
       className={[
-        "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors",
+        "group flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors",
         active ? "bg-soft" : "hover:bg-soft/60",
       ].join(" ")}
     >
@@ -358,6 +373,21 @@ function ProfileRow({
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent shrink-0">
           <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
+      )}
+      {onPreview && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPreview();
+          }}
+          aria-label="preview"
+          className="w-6 h-6 rounded-md text-subink opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-ink hover:bg-canvas transition-opacity flex-shrink-0 flex items-center justify-center"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" strokeLinejoin="round" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
       )}
       {onRemove && (
         <button
